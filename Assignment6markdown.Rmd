@@ -1,0 +1,131 @@
+---
+title: "Anatall konkursåpninger"
+subtitle: "Før og under covid-19"
+author: "Sofie Pauline Rise"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+df_print: paged
+pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(lubridate)
+
+##reading the html files for each 8 quartals in these two years. 
+kvartal1<- read_html("https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.01.2019&datoTil=31.03.2019&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal2<-read_html( "https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.04.2019&datoTil=30.06.2019&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal3<- read_html("https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.07.2019&datoTil=30.09.2019&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal4<- read_html("https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.10.2019&datoTil=31.12.2019&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal.1.2020<- read_html("https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.01.2020&datoTil=31.03.2020&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal.2.2020<-read_html( "https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.04.2020&datoTil=30.06.2020&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal.3.2020<- read_html("https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.07.2020&datoTil=30.09.2020&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+kvartal.4.2020<-read_html("https://w2.brreg.no/kunngjoring/kombisok.jsp?datoFra=01.10.2020&datoTil=31.12.2020&id_region=0&id_niva1=51&id_niva2=56&id_bransje1=0")
+```
+
+
+
+
+```{r, include= FALSE}
+kvartal1<-kvartal1%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+kvartal2<-kvartal2%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+kvartal3<-kvartal3%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+kvartal4<-kvartal4%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+kvartal.1.2020<-kvartal.1.2020%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+kvartal.2.2020<-kvartal.2.2020%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+kvartal.3.2020<-kvartal.3.2020%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+
+kvartal.4.2020<-kvartal.4.2020%>%
+  html_nodes(xpath = "//table")%>%
+  html_nodes("table")%>%
+  html_table(fill=TRUE)
+
+
+##combining all the quarters togheter to one data frame
+df.frame<- bind_rows(kvartal1,kvartal2,kvartal3,kvartal4,kvartal.1.2020,kvartal.2.2020,kvartal.3.2020,kvartal.4.2020)
+
+
+df.frame<-df.frame%>%
+  select(.,X2,X4,X6,X8)%>% ###selescting what columns to look at 
+  mutate(region=ifelse(grepl("[^Dato][A-Za-z]", X6), X6, NA)) %>% ##selesctin fylker to go from A-Z and start over with new fylke
+  fill(region)%>%
+  filter(nchar(X4) >= 7) %>% ##removing individuals and keemping only companies with org.number >7
+  filter(X8 == "Konkursåpning") ##selecting only the ones with konkurs åpning not hjemmland/utland
+
+
+df.frame<- df.frame%>%
+  mutate(df.frame$X6<-as.Date(df.frame$X6, format = "%d.%m.%Y"))
+colnames(df.frame)<- c("Bedriftsnavn","Org.nummer","År/måned","Status","Fylke","Dato")
+
+##separating the date variabel into day, month and year
+df.frame<-df.frame %>%
+  mutate(
+    dates2=ymd(Dato),
+    År=year(dates2),
+    Måned=month(dates2),
+    Dag=day(dates2)
+  )
+
+
+##again selecting what variables that are intresting to us. 
+df.frame<- df.frame%>%
+  select(Bedriftsnavn,Status, Fylke,År, Måned)
+colnames(df.frame)<-c("Bedriftsnavn","Status","Fylke","År","Måned") ##naming the variables to clean up 
+
+##how many was "konkurs" for each month in each Fylke
+df.frame<- df.frame%>%
+  group_by(Fylke,Måned, År)%>%
+  count(Status)
+## making År variable into a factor so we can plot 
+df.frame$År<-as.factor(df.frame$År)
+```
+
+
+
+```{r,message = FALSE, warrning= FALSE,echo=FALSE}
+##plotting 
+df.frame%>%
+  ggplot(aes(x=Måned, y=n, group=År))+
+  geom_line(aes(color=År),size=1)+
+  facet_wrap(~Fylke)+
+  scale_x_continuous(breaks=c(1:12))+
+  ylab("Antall konkurser")+
+  ggtitle("Antall konkurser i de ulike fylkene",
+          subtitle = " Fra 1.1.2019 - dagens dag")
+```
+
+##### Vi kan se i grafen under at det så langt ikke har vært noen stor endring i antall konkursåpninger i de ulike fylkene.
+
+
+
