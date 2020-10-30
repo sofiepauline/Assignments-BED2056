@@ -1,0 +1,263 @@
+---
+title: "Assignment 7"
+author: "Sofie Pauline Rise"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyverse)  
+library(rvest)    
+library(lubridate)
+library(tidyr)
+library(dplyr)
+library(readr)
+library(ggplot2)
+```
+
+
+##### In this assignment we will look at data from new borns in the U.S from 2017-2019
+First we will look at the portion of boys to girls in the given years.
+Then we will look at the average weight in grams by gender. 
+Last we will look at the portions of boys to girls by day of birth 
+
+```{r,echo=TRUE, message = FALSE, warning= FALSE, include=FALSE}
+##loading data
+baby2017<- "Nat2017PublicUS.c20180516.r20180808.txt"
+baby2018<- "Nat2018PublicUS.c20190509.r20190717.txt"
+baby2019<- "Nat2019PublicUS.c20200506.r20200915.txt"
+
+##selecting columns and give name to them 
+data2017 <- 
+  read_fwf(baby2017,
+           fwf_positions(start = c(9,13, 23, 475, 504),
+                         end   = c(12,14, 24, 476, 507)))
+
+data2018 <- 
+  read_fwf(baby2018,
+           fwf_positions(start = c(9,13, 23, 475, 504),
+                         end   = c(12,14, 24, 476, 507)))
+
+
+data2019 <- 
+  read_fwf(baby2019,
+           fwf_positions(start = c(9,13, 23, 475, 504),
+                         end   = c(12,14, 24, 476, 507)))
+      
+##make csv file
+write.csv(data2017, "birth2017.csv")
+write.csv(data2018, "birth2018.csv")
+write.csv(data2019, "birth2019.csv")
+
+csv.2017<- read_csv("birth2017.csv")
+csv.2018<- read_csv("birth2018.csv")
+csv.2019<- read_csv("birth2019.csv")
+
+##combining all the csv togheter
+total<- rbind(csv.2017,csv.2018,csv.2019)
+##changing column names 
+colnames(total) <- c("Number","Year","Month","Weekday", "Gender", "Weight")
+##making the weight variable to numeric 
+total$Weight<- as.numeric(total$Weight)
+
+##start to separate the variables to get ready to plot
+##first make a data frame for each gender and each year 
+g <- total %>% 
+  filter(Gender=="M")
+  
+ 
+##same for girls
+j<- total %>%
+  filter(Gender=="F")
+##assignment 1, portion of boys to girls 
+##looking at all years combined so 2017-2019
+
+
+boy<- g %>%
+  group_by(Year)%>%
+  tally() %>%
+  mutate(Gender="M")
+
+girl<-j %>%
+  group_by(Year)%>%
+  tally()%>%
+  mutate(Gender= "F")
+##combining the two data frames to one 
+## three variables, "Year" and "n" for number of births, and gender 
+bandg<- rbind(boy,girl)
+
+##cahnging variable Year to character to easier be able to plot
+bandg$Year <- as.character(bandg$Year)
+```
+
+
+```{r,message = FALSE, warrning= FALSE,echo=FALSE}
+##plotting
+##selectiong Gender to x and n(number) to y
+##geombar is box/bar outlay 
+##selecting to separate the bars i three cathegoriez based on year
+
+bandg%>%
+  ggplot(aes(x=Gender, y=n, fill=Gender))+
+  geom_bar(stat = "identity")+
+  facet_grid(~Year)+
+  ggtitle("The proportion of boys to girls")+
+  ylab("Births")
+```
+
+##### As we can see here there are more boys born in the U.S during the period of 2017-2019. 
+```{r,echo=TRUE, message = FALSE, warning= FALSE, include= FALSE}
+## As we can see in all three years there have been more baby boy births 
+
+
+##2 averange birth weight 
+
+##finding the avg. weight and grouping by year 
+##biys first
+avgB<- g%>%
+  group_by(Year)%>%
+  mutate(Average=mean(Weight))
+##girls
+avgG<- j%>%
+  group_by(Year)%>%
+  mutate(Average=mean(Weight))
+
+##filtering by year to find a number for each year 
+##selecting what columns to look at here, gender, year and the average
+## then slice to make it one observation (mean of all months and days)
+##2017
+avgG17 <- avgG %>% 
+  filter(Year==2017) %>% 
+  select(Gender, Year, Average)%>%
+  slice(1)
+  
+#2018
+avgG18 <- avgG %>% 
+  filter(Year==2018) %>% 
+  select(Gender, Year, Average) %>% 
+  slice(1)
+#2019
+avgG19 <- avgG %>% 
+  filter(Year==2019) %>% 
+  select(Gender, Year, Average) %>% 
+  slice(1)
+
+##doing the same for boys 
+#2017
+avgB17 <- avgB %>% 
+  filter(Year==2017) %>% 
+  select(Gender, Year, Average) %>% 
+  slice(1)
+
+#2018
+avgB18 <- avgB %>% 
+  filter(Year==2018) %>% 
+  select(Gender, Year, Average) %>% 
+  slice(1)
+
+avgB19 <- avgB %>% 
+  filter(Year==2019) %>% 
+  select(Gender, Year, Average) %>% 
+  slice(1)
+
+##to be able to plot make one data from all the average weight from all the years
+df.mean<- rbind(avgB17,avgB18,avgB19,avgG17,avgG18,avgG19)
+
+
+```
+
+```{r,message = FALSE, warrning= FALSE,echo=FALSE}
+##plotting of average weight
+##gender on the x and Average weight on the y, and sep. by gender
+##telling it to be a bar graph 
+
+df.mean%>%
+  ggplot(aes(x=Gender, y=Average, fill=Gender))+
+  geom_bar(stat = "identity")+
+  facet_grid(~Year)+
+  ggtitle("The average weight of new borns in grams", 
+          subtitle = "Separated by gender 2017-2019")
+
+```
+##### Here we can see that the boys are a bit heavier than girls at birth.
+
+
+```{r,echo=TRUE, message = FALSE, warning= FALSE, include=FALSE}
+##3
+##portion of boys to girls by day of birth 
+##How many boys and girls were born on each day? 
+##first for girls, using the old data wich is grouped by year 
+##selecting only F to be in this group 
+##doing for each year first and then combining to one data frame in the end
+
+#2017
+boyday17<- csv.2017%>%
+  filter(X4=="M")%>%
+  group_by(X3)%>%
+  tally()%>%
+  mutate(Gender="M")%>%
+  mutate(Year="2017")
+
+girlday17<- csv.2017%>%
+  filter(X4=="F")%>%
+  group_by(X3)%>%
+  tally()%>%
+  mutate(Gender="F")%>%
+  mutate(Year="2017")
+
+
+##same for 2018 
+girlday18<- csv.2018%>%
+  filter(X4=="F")%>%
+  group_by(X3)%>%
+  tally()%>%
+  mutate(Gender="F")%>%
+  mutate(Year="2018")
+
+boyday18<- csv.2018%>%
+  filter(X4=="M")%>%
+  group_by(X3)%>%
+  tally()%>%
+  mutate(Gender="M")%>%
+  mutate(Year="2018")
+
+
+
+##2019
+boyday19<- csv.2019%>%
+  filter(X4=="M")%>%
+  group_by(X3)%>%
+  tally()%>%
+  mutate(Gender="M")%>%
+  mutate(Year="2019")
+
+girlday19<- csv.2019%>%
+  filter(X4=="F")%>%
+  group_by(X3)%>%
+  tally()%>%
+  mutate(Gender="F")%>%
+  mutate(Year="2019")
+
+
+
+
+##combining to one data
+day.t<- rbind(boyday17,boyday18,boyday19,girlday17,girlday18,girlday19)
+colnames(day.t)<- c("Weekday", "Number", "Gender", "Year")
+
+
+
+```
+
+```{r,message = FALSE, warrning= FALSE,echo=FALSE}
+day.t%>%
+  ggplot(aes(x=Gender, y=Number, fill=Year))+
+  geom_bar(stat = "identity")+
+  facet_grid(~Weekday)+
+  ggtitle("The proportion of boys to girls by day of birth ", 
+          subtitle = "Where Sunday is first day of the week")+
+  ylab("Number of births")
+```
+##### Here we can see that most child are born in Monday-Friday for both genders 
